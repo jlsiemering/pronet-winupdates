@@ -1,2 +1,2 @@
 # pronet-winupdates
-A collection of scripts to manage windows updates
+this will change registry keys related to windows update for business

@@ -1,18 +1,25 @@
-#Set group policy objects for windows update for business. This will probably only work for Windows 10
+#Set group policy objects for windows update for business. This requires installation of PolicyFileEditor from The PS Gallery
+
+#install PolicyFileEditor
+Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
+Install-Module -Name PolicyFileEditor -RequiredVersion 3.0.0 -Force
+Import-Module -Name PolicyFileEditor
 
 #defer feature updates
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name DeferFeatureUpdates -Value 1
+Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName DeferFeatureUpdates -Data 1 -Type DWORD
 #set when feature updates are received (default deferrment is 90 days)
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name DeferFeatureUpdatesPeriodInDays -Value 90
+Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName DeferFeatureUpdatesPeriodInDays -Data 90 -Type DWORD
 #defer quality updates
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name DeferQualityUpdates -Value 1
+Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName DeferQualityUpdates -Data 1 -Type DWORD
 #set when quality updates are installed (default deferrment is 14 days)
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name DeferQualityUpdatesPeriodInDays -Value 14
+Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName DeferQualityUpdatesPeriodInDays -Data 14 -Type DWORD
 #make sure wufb safeguards are on
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name DisableWUfBSafeguards -Value 0
+Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName DisableWUfBSafeguards -Data 0 -Type DWORD
 #disable preview builds     
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name ManagePreviewBuilds -Value 1
+Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName ManagePreviewBuilds -Data 1 -Type DWORD
 #disable preview builds
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name ManagePreviewBuildsPolicyValue -Value 0
+Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName ManagePreviewBuildsPolicyValue -Data 0 -Type DWORD
 
-
+#apply the policy to the host immediately
+gpupdate.exe /force

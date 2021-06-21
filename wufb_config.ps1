@@ -2,9 +2,11 @@
 
 #install PolicyFileEditor
 Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+Write-Host "NuGet has been installed"
 Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
 Install-Module -Name PolicyFileEditor -RequiredVersion 3.0.0 -Force
 Import-Module -Name PolicyFileEditor
+Write-Host "PolicyFileEditor has been installed"
 
 #defer feature updates
 Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName DeferFeatureUpdates -Data 1 -Type DWORD
@@ -23,3 +25,5 @@ Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.
 
 #apply the policy to the host immediately
 gpupdate.exe /force
+
+Write-Host "The script has run successfully. Check the WUfB policy objects to verify they have been changed."

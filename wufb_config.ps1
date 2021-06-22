@@ -1,29 +1,78 @@
-#Set group policy objects for windows update for business. This requires installation of PolicyFileEditor from The PS Gallery
+#New version of a powershell script that changes the LGPO items for WUFB
+#Dependent on LGPO.exe to function
 
-#install PolicyFileEditor
-Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
-Write-Host "NuGet has been installed"
-Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
-Install-Module -Name PolicyFileEditor -RequiredVersion 3.0.0 -Force
-Import-Module -Name PolicyFileEditor
-Write-Host "PolicyFileEditor has been installed"
+#Downloads LGPO.exe to the kworking directory for usage, unzips it, and renames it
+Invoke-WebRequest -Uri 'https://download.microsoft.com/download/8/5/C/85C25433-A1B0-4FFA-9429-7E023E7DA8D8/LGPO.zip' -Outfile C:\kworking\LGPO.zip
+Expand-Archive -LiteralPath C:\kworking\LGPO.zip -DestinationPath C:\kworking\
+Rename-Item C:\kworking\LGPO_30 C:\kworking\lgporun -Force
+if (Test-Path -Path C:\kworking\lgporun)
+{Write-Host "Successfully downloaded LGPO.exe"}
 
-#defer feature updates
-Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName DeferFeatureUpdates -Data 1 -Type DWORD
-#set when feature updates are received (default deferrment is 90 days)
-Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName DeferFeatureUpdatesPeriodInDays -Data 90 -Type DWORD
-#defer quality updates
-Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName DeferQualityUpdates -Data 1 -Type DWORD
-#set when quality updates are installed (default deferrment is 14 days)
-Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName DeferQualityUpdatesPeriodInDays -Data 14 -Type DWORD
-#make sure wufb safeguards are on
-Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName DisableWUfBSafeguards -Data 0 -Type DWORD
-#disable preview builds     
-Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName ManagePreviewBuilds -Data 1 -Type DWORD
-#disable preview builds
-Set-PolicyFileEntry -Path $env:systemroot\system32\GroupPolicy\Machine\registry.pol -Key "Software\Policies\Microsoft\Windows\WindowsUpdate" -ValueName ManagePreviewBuildsPolicyValue -Data 0 -Type DWORD
+#Uses LGPO.exe to make a baseline LGPO backup in the kworking directory
+if (Test-Path -Path C:\kworking\LGPO)
+{Write-Host "LGPO Folder Already Exists"}
+else
+{New-Item -Path C:\kworking -Name "LGPO" -ItemType "directory"}
+C:\kworking\lgporun\LGPO.exe /parse /m C:\Windows\System32\GroupPolicy\Machine\Registry.pol >> C:\kworking\LGPO\baseline.txt
 
-#apply the policy to the host immediately
-gpupdate.exe /force
+#Writes the desired LGPO config to a variable and saves it as a text file
+$POL = "
+; ----------------------------------------------------------------------
+; PARSING Computer POLICY
+; Source file:  C:\Windows\System32\GroupPolicy\Machine\Registry.pol
 
-Write-Host "The script has run successfully. Check the WUfB policy objects to verify they have been changed."
+Computer
+SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate
+DisableWUfBSafeguards
+DWORD:0
+
+Computer
+SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate
+DeferFeatureUpdates
+DWORD:1
+
+Computer
+SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate
+DeferFeatureUpdatesPeriodInDays
+DWORD:90
+
+Computer
+SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate
+DeferQualityUpdates
+DWORD:1
+
+Computer
+SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate
+DeferQualityUpdatesPeriodInDays
+DWORD:14
+
+Computer
+SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate
+ManagePreviewBuilds
+DWORD:1
+
+Computer
+SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate
+ManagePreviewBuildsPolicyValue
+DWORD:0
+
+Computer
+SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate
+BranchReadinessLevel
+DWORD:16
+
+; PARSING COMPLETED.
+; ----------------------------------------------------------------------
+
+"
+Out-File -FilePath C:\kworking\LGPO\WUFBpol.txt -InputObject $POL
+
+#Writes the desired config to the machine LGPO
+C:\kworking\lgporun\LGPO.exe /t C:\kworking\LGPO\WUFBpol.txt
+
+#Cleans up and removes unneeded files
+Remove-Item -Path C:\kworking\lgporun -Recurse -Force
+Remove-Item -Path C:\kworking\LGPO.zip -Force
+
+
+#All Done!!
